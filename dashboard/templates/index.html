@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Automation Platform</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>YouTube Automation Platform</h1>
+            <div class="status-badge" id="statusBadge">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Idle</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Quick Actions -->
+        <section class="card">
+            <h2>Quick Actions</h2>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="triggerPipeline('daily')">
+                    Run Full Pipeline
+                    <small>1 Long + 3 Shorts</small>
+                </button>
+                <button class="btn btn-secondary" onclick="triggerPipeline('long')">
+                    Generate Long Video
+                    <small>Single long-form</small>
+                </button>
+                <button class="btn btn-secondary" onclick="triggerPipeline('shorts')">
+                    Generate 3 Shorts
+                    <small>Short-form only</small>
+                </button>
+                <button class="btn btn-outline" onclick="triggerPipeline('daily', true)">
+                    Dry Run
+                    <small>No upload</small>
+                </button>
+            </div>
+        </section>
+
+        <!-- Live Status -->
+        <section class="card" id="statusSection" style="display:none;">
+            <h2>Live Status</h2>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+            </div>
+            <p class="progress-label"><span id="progressStep">Waiting...</span> — <span id="progressPercent">0</span>%</p>
+            <div class="log-container" id="logContainer">
+                <pre id="logOutput"></pre>
+            </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="card">
+            <h2>Analytics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.total_videos }}</span>
+                    <span class="stat-label">Total Videos</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.completed_videos }}</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.uploaded_videos }}</span>
+                    <span class="stat-label">Uploaded</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.success_rate }}%</span>
+                    <span class="stat-label">Success Rate</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.total_runs }}</span>
+                    <span class="stat-label">Pipeline Runs</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ stats.failed_videos }}</span>
+                    <span class="stat-label">Failed</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video History -->
+        <section class="card">
+            <h2>Video History</h2>
+            {% if videos %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Topic</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>YouTube</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for video in videos %}
+                        <tr>
+                            <td>{{ video.created_at[:10] if video.created_at else 'N/A' }}</td>
+                            <td><span class="badge badge-{{ video.video_type }}">{{ video.video_type }}</span></td>
+                            <td>{{ video.topic[:40] }}{{ '...' if video.topic|length > 40 else '' }}</td>
+                            <td>{{ (video.title or 'N/A')[:50] }}{{ '...' if (video.title or '')|length > 50 else '' }}</td>
+                            <td><span class="status-{{ video.status }}">{{ video.status }}</span></td>
+                            <td>
+                                {% if video.youtube_id %}
+                                <a href="https://youtube.com/watch?v={{ video.youtube_id }}" target="_blank" class="yt-link">Watch</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="empty-state">No videos generated yet. Click "Run Full Pipeline" to get started!</p>
+            {% endif %}
+        </section>
+
+        <!-- Configuration -->
+        <section class="card">
+            <h2>Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <span class="config-label">Niche</span>
+                    <span class="config-value">{{ config.content.niche }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">AI Model</span>
+                    <span class="config-value">{{ config.ai.model }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Voice</span>
+                    <span class="config-value">{{ config.audio.voice }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Schedule</span>
+                    <span class="config-value">Daily at {{ '%02d' % config.schedule.hour }}:{{ '%02d' % config.schedule.minute }} {{ config.schedule.timezone }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Privacy</span>
+                    <span class="config-value">{{ config.youtube.privacy_status }}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Shorts Count</span>
+                    <span class="config-value">{{ config.shorts.count }}</span>
+                </div>
+            </div>
+            <p class="config-hint">Edit <code>config/config.yaml</code> to change settings.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>YouTube Automation Platform v1.0.0</p>
+    </footer>
+
+    <script>
+        let pollInterval = null;
+
+        async function triggerPipeline(type, dryRun = false) {
+            const url = `/api/trigger/${type}?dry_run=${dryRun}`;
+            try {
+                const res = await fetch(url, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showStatus();
+                    startPolling();
+                } else {
+                    alert(data.error || 'Failed to trigger pipeline');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function showStatus() {
+            document.getElementById('statusSection').style.display = 'block';
+        }
+
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = setInterval(updateStatus, 3000);
+            updateStatus();
+        }
+
+        async function updateStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                const bar = document.getElementById('progressBar');
+                const step = document.getElementById('progressStep');
+                const pct = document.getElementById('progressPercent');
+                const logOutput = document.getElementById('logOutput');
+
+                if (data.running) {
+                    dot.className = 'status-dot running';
+                    text.textContent = 'Running';
+                    document.getElementById('statusSection').style.display = 'block';
+                } else {
+                    dot.className = 'status-dot idle';
+                    text.textContent = 'Idle';
+                    if (pollInterval && data.progress >= 100) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                }
+
+                bar.style.width = data.progress + '%';
+                step.textContent = data.current_step || 'Waiting...';
+                pct.textContent = data.progress;
+
+                if (data.logs && data.logs.length > 0) {
+                    logOutput.textContent = data.logs.join('\n');
+                    const container = document.getElementById('logContainer');
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (e) {
+                console.error('Status poll error:', e);
+            }
+        }
+
+        // Check status on page load
+        updateStatus();
+
+        // Poll if pipeline is running
+        fetch('/api/status').then(r => r.json()).then(data => {
+            if (data.running) {
+                showStatus();
+                startPolling();
+            }
+        });
+    </script>
+</body>
+</html>

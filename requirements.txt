@@ -1,0 +1,25 @@
+# Video/Audio
+moviepy>=2.0.0
+edge-tts>=6.1.0
+Pillow>=10.0.0
+
+# YouTube API
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# AI Content Generation
+httpx>=0.25.0
+
+# Web Dashboard
+fastapi>=0.104.0
+uvicorn>=0.24.0
+jinja2>=3.1.0
+python-multipart>=0.0.6
+
+# Scheduling
+apscheduler>=3.10.0
+
+# Config & Utils
+pyyaml>=6.0
+python-dotenv>=1.0.0

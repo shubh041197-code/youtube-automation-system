@@ -1,0 +1,89 @@
+# YouTube Automation Platform Configuration
+# Copy this file to config.yaml and customize
+
+# Content Generation
+content:
+  niche: "technology"              # Your channel niche
+  topics:                          # Pool of topics for AI to choose from
+    - "artificial intelligence"
+    - "programming tutorials"
+    - "tech news"
+  language: "en"
+  long_video_target_duration: 480  # Target duration in seconds (8 min)
+  short_target_duration: 45        # Target short duration in seconds
+
+# AI API Settings (OpenAI-compatible)
+ai:
+  api_base_url: "https://api.openai.com/v1"
+  model: "gpt-4o-mini"
+  max_tokens: 4096
+  temperature: 0.8
+
+# Audio Settings (edge-tts voices)
+audio:
+  voice: "en-US-GuyNeural"        # See: edge-tts --list-voices
+  rate: "+0%"
+  volume: "+0%"
+  fallback_voice: "en-US-JennyNeural"
+
+# Video Settings
+video:
+  resolution: [1920, 1080]
+  fps: 24
+  background_color: [15, 15, 35]
+  text_color: "white"
+  font_size: 48
+  font: "DejaVu-Sans-Bold"
+  music_volume: 0.08
+  transition_duration: 0.5
+
+# Shorts Settings
+shorts:
+  resolution: [1080, 1920]
+  fps: 30
+  font_size: 64
+  count: 3
+  background_colors:
+    - [138, 43, 226]
+    - [0, 128, 128]
+    - [220, 20, 60]
+
+# Thumbnail Settings
+thumbnail:
+  resolution: [1280, 720]
+  font_size: 72
+  templates:
+    - "gradient_bold"
+    - "split_accent"
+    - "dark_glow"
+
+# YouTube Upload Settings
+youtube:
+  category_id: "28"
+  privacy_status: "private"
+  default_tags:
+    - "technology"
+    - "tutorial"
+  notify_subscribers: false
+
+# Scheduling
+schedule:
+  enabled: true
+  hour: 6
+  minute: 0
+  timezone: "UTC"
+
+# Output Settings
+output:
+  base_dir: "output"
+  keep_files: true
+  max_storage_gb: 50
+
+# Database
+database:
+  path: "automation.db"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "automation.log"
